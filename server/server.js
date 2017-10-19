@@ -46,14 +46,34 @@ app.get('/todos/:id', (req, res)=> {
     }
     res.status(200).send({todo});
   }).catch((e) => {
+    console.log(e);
     res.status(400).send();
   });
 })
 
+app.delete('/todos/:id', (req, res) => {
+  var id = req.params.id;
+  if(!ObjectID.isValid(id)){
+    console.log('ID IS NOT VALID! You have to write more code in this case...');
+    return res.status(404).send();
+  }
+
+  Todo.findByIdAndRemove(id).then((todoFound) => {
+    if(!todoFound) {
+      return res.status(404).send();
+    }
+    console.log('YOU WIN!', todoFound);
+    res.send({todoFound});
+  }).catch((e) => {
+    // catch any potential errors in all of them
+    console.log(e);
+    console.log('This is a catch');
+    res.status(400).send();
+  })
+});
 
 app.listen(port, () => {
   console.log(`Started on port ${port}`);
 });
-
 
 module.exports = {app};
