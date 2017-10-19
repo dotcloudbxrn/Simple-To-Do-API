@@ -110,7 +110,7 @@ describe('GET /todos/:id', () => {
   });
 
   it('should return a 404 if Todo does not have a valid ObjectID', (done) => {
-    var id = 123;
+    var id = 123; 
     request(app)
       .get(`/todos/${id}`)
       .expect(404)
