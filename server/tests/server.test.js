@@ -120,18 +120,41 @@ describe('DELETE /todos/:id', () => {
     var hexId = todos[1]._id.toHexString();
 
     request(app)
+    //trigger delete request
       .delete(`/todos/${hexId}`)
+      // assert status
       .expect(200)
+      // assert that the response body's ID is indeed the one we sent by adding a callback
+      // function that links itself the response object that supertest got back from it's request
+      // ASSERT THAT THE DATA COMES BACK AS THE RESPONSE BODY
+      // MAKE A CUSTOM EXPECT CALL, PASSING IN OUR FUNCTION,
+      // WHERE WE HAVE OUR RESPONSE OBJECT PASSED IN
+
       .expect((res) => {
         expect(res.body.todo._id).toBe(hexId);
+        // wrap up and query the DB to confirm the ID is not present in the collection
+        // CALL END (METHOD), PASSING IN A CALLBACK, SO WE CAN DO ASYNC THINGS BEFORE WE WRAP UP
+        // THE TEST CASE 
+        // END GETS CALLED WITH AN ERROR AND RESPONSE (IF YOU REMEMBER - NO I DON'T) 
       }).end((err, res) => {
+         // IF THERE IS AN ERROR, WE NEED TO HANDLE THAT, OTHERWISE THERE'S NO NEED TO QUERY THE DB
         if(err) {
+          // PASSING IN THE ERROR TO THE DONE CALLBACK THAT IS GOING TO TELL MOCHA - 
+          // NOW you can determine whether we failed or not
           return done(err);
         }
-          Todo.findById(hexId).then((todo) => {
-            expect(todo).toNotExist();
-            done();
-          }).catch((e) => done(e));
+
+        // make the query using find by ID. Thing returns a promise, which you can use 
+        // the TODO is actually the success HANDLER
+        // IF THERE IS AN ERROR - > Add a catch clause, passing in the error through TO DONE
+        // passing in a callback -> the todo variable 
+        Todo.findById(hexId).then((todo) => {
+          // when you do so, it'll not be there, since you already deleted it
+          expect(todo).toNotExist();
+          // call done so we're telling Mocha the case should be evaluated
+          done();
+          // use shortcut
+        }).catch((e) => done(e));
       })
   });
 
