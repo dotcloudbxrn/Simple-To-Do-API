@@ -15,7 +15,6 @@ app.post('/todos', (req, res) => {
   var todo = new Todo({
     text: req.body.text
   });
-  console.log(req.body.text);
   todo.save().then((data) => {
     res.send(data);
   }, (err) => {
@@ -36,7 +35,6 @@ app.get('/todos', (req, res) => {
 app.get('/todos/:id', (req, res)=> {
   var id = req.params.id;
   if(!ObjectID.isValid(id)) {
-    console.log('Could not find Todo with such ID');
     res.status(404).send();
   }
 
@@ -46,7 +44,6 @@ app.get('/todos/:id', (req, res)=> {
     }
     res.status(200).send({todo});
   }).catch((e) => {
-    console.log(e);
     res.status(400).send();
   });
 })
@@ -54,20 +51,16 @@ app.get('/todos/:id', (req, res)=> {
 app.delete('/todos/:id', (req, res) => {
   var id = req.params.id;
   if(!ObjectID.isValid(id)){
-    console.log('ID IS NOT VALID! You have to write more code in this case...');
     return res.status(404).send();
   }
 
-  Todo.findByIdAndRemove(id).then((todoFound) => {
-    if(!todoFound) {
+  Todo.findByIdAndRemove(id).then((todo) => {
+    if(!todo) {
       return res.status(404).send();
     }
-    console.log('YOU WIN!', todoFound);
-    res.send({todoFound});
+    res.send({todo});
   }).catch((e) => {
     // catch any potential errors in all of them
-    console.log(e);
-    console.log('This is a catch');
     res.status(400).send();
   })
 });
