@@ -1,10 +1,24 @@
 const expect = require('expect');
 const request = require('supertest');
+const {ObjectID} = require('mongodb');
+
 
 const {app} = require('./../server');
-const {Todo} = require('./../models/todo'); 
+const {Todo} = require('./../models/todo');
 
-const todos = [{text: 'first'}, {text: 'second'}, {text: 'third'}];
+const todos = [
+  {
+    text: 'first',
+    _id: new ObjectID()
+  },
+  {
+    text: 'second',
+    _id: new ObjectID()
+  },
+  {
+    text: 'third',
+    _id: new ObjectID()
+  }];
 
 beforeEach((done) => {
   Todo.remove({}).then(() => {
@@ -25,7 +39,7 @@ describe('POST /todos', () => {
       .expect((res) => {
         // 
         expect(res.body.text).toBe(text)
-      }).end((err, res) => {
+      }).end((err) => {
         if (err) {
           return done(err);
         }
@@ -68,4 +82,39 @@ describe('GET /todos', () => {
       })
       .end(done);
   });
+});
+
+console.log(`the string is ${todos[0]._id.toHexString()}`);
+
+
+describe('GET /todos/:id', () => {
+  // it is an async, so we have to provide a callback function
+  it('should return todo doc', (done) => {
+    request(app)
+    // is an objectID - we convert it 
+      .get(`/todos/${todos[0]._id.toHexString()}`)
+      .expect(200)
+      // create a custom EXPECT CALL
+      // gets called with the response object
+      .expect((res) => {
+        expect(res.body.todo.text).toBe(todos[0].text);
+      })
+      .end(done)
+  }); 
+
+  it('should return a 404 if Todo is not found', (done) => {
+    request(app)
+      .get(`/todos/${new ObjectID().toHexString()}`)
+      .expect(404)
+      .end(done)
+  });
+
+  it('should return a 404 if Todo does not have a valid ObjectID', (done) => {
+    var id = 123;
+    request(app)
+      .get(`/todos/${id}`)
+      .expect(404)
+      // call the end method and pass done
+      .end(done)
+  })
 });
