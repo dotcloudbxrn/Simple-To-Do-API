@@ -9,10 +9,13 @@ const {Todo} = require('./../models/todo');
 const todos = [
   {
     text: 'first',
+    completed: true,
+    completedAt: 333,
     _id: new ObjectID()
   },
   {
     text: 'second',
+    completed: false,
     _id: new ObjectID()
   },
   {
@@ -172,5 +175,50 @@ describe('DELETE /todos/:id', () => {
       .expect(404)
       // call the end method and pass done
       .end(done)
+  });
+});
+
+
+
+describe('PATCH /todos/:id', ()=> {
+  it('should be able to change a value of a property', (done) => {
+    var hexId = todos[0]._id.toHexString();
+
+    var newOptions = {
+      completed: true,
+      text: 'Doing some cool shit!',
+    }
+
+    request(app)
+      .patch(`/todos/${hexId}`).send(newOptions)
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.todo.text).toBe(newOptions.text);
+        expect(res.body.todo.completedAt).toBeA('number');
+        expect(res.body.todo.completed).toBeA('boolean');
+      }).end(done);
+  });
+
+  it('should clear completedAt when todo is not completed', (done) => {
+    var hexId = todos[1]._id.toHexString();
+
+    var changedStuff = {
+      text: 'OMFG, SO COOL!',
+      completed: false
+    }
+    
+    request(app)
+      .patch(`/todos/${hexId}`).send(changedStuff)
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.todo.text).toBe(changedStuff.text);
+        expect(res.body.todo.completed).toBeA('boolean').toBe(false);
+        expect(res.body.todo.completedAt).toNotExist();
+        done();
+      }).end((err, res) => {
+        if(err) {
+          done(err);
+        }
+      });
   });
 });
