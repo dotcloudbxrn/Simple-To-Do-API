@@ -14,6 +14,16 @@ const port = process.env.PORT;
 
 app.use(bodyParser.json());
 
+app.get('/todos', (req, res) => {
+  Todo.find().then((todos) => {
+    // better sending an object, than an array
+    res.send({todos});
+  }, (e) => {
+    //handle error
+    res.status(400).send(e);
+  })
+});
+
 app.post('/todos', (req, res) => {
   var todo = new Todo({
     text: req.body.text
@@ -22,16 +32,6 @@ app.post('/todos', (req, res) => {
     res.send(data);
   }, (err) => {
     res.status(400).send(err);
-  })
-});
-
-app.get('/todos', (req, res) => {
-  Todo.find().then((todos) => {
-    // better sending an object, than an array
-    res.send({todos});
-  }, (e) => {
-    //handle error
-    res.status(400).send(e);
   })
 });
 
@@ -125,6 +125,45 @@ app.patch('/todos/:id', (req, res) => {
       res.status(400).send();
     });
 });
+
+// Post /users
+//  // create a new instance of the model
+// call save, if it's good -> proceed, if not, shit
+// use pick -> tokens
+// email and password
+// then pass that into the constructor fn
+// call save and respond appropriately
+// email unique -> shut down server, wipe database put it on again
+
+
+app.post(`/users`, (req, res) => {
+  var reqBody = _.pick(req.body, ['email', 'password']);
+  var user = new User(reqBody);
+
+  user.save().then(() => {
+    return user.generateAuthToken();
+  }).then((token) => {
+    res.header('x-auth', token).send(user);
+  }).catch((e) => {
+    console.log(e);
+    res.status(400).send(e);
+  })
+
+  // versus the error case (not using catch), instead of catch, WHICH DOES NOT WORK
+  // as it does not find duplicates. interesting
+  // , (err) => {
+  //   console.log(err);
+  //   res.status(400).send(err);
+  // }
+})
+
+app.get('/users', (req, res) => {
+  User.find().then((user) => {
+    res.send({user});
+  }).catch((e) => {
+    res.send(e);
+  })
+})
 
 app.listen(port, () => {
   console.log(`Started on port ${port}`);
