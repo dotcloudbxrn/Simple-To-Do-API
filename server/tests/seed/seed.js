@@ -6,22 +6,26 @@ const jwt = require('jsonwebtoken');
 
 const userOneID =  new ObjectID();
 const userTwoID = new ObjectID();
+const userThreeID = new ObjectID();
 
 const todos = [
   {
     text: 'first',
     completed: true,
     completedAt: 333,
-    _id: new ObjectID()
+    _id: new ObjectID(),
+    _creator: userOneID
   },
   {
     text: 'second',
     completed: false,
-    _id: new ObjectID()
+    _id: new ObjectID(),
+    _creator: userTwoID
   },
   {
     text: 'third',
-    _id: new ObjectID()
+    _id: new ObjectID(),
+    _creator: userThreeID
   }];
 
 const users = [
@@ -37,7 +41,11 @@ const users = [
   {
     _id: userTwoID,
     email: 'neAto@example.com',
-    password: 'plaintextyo'
+    password: 'plaintextyo',
+    tokens: [{
+      access: 'auth',
+      token: jwt.sign({_id: userTwoID, access: 'auth'}, 'ato').toString()
+    }]
   }
 ]
 

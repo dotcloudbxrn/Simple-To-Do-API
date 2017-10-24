@@ -17,22 +17,18 @@ describe('POST /todos', () => {
 
     request(app)
       .post('/todos')
-      // converted to JSON by supertest
+      .set('x-auth', users[0].tokens[0].token)
       .send({text})
       .expect(200)
-      // custom assertion do get passed to the response 
       .expect((res) => {
-        // 
         expect(res.body.text).toBe(text)
       }).end((err) => {
         if (err) {
           return done(err);
         }
 
-        //fetch all todos
         Todo.find().then((todos) => {
           expect(todos.length).toBe(4);
-          // expect(todos[0].text).toBe(text);
           done();
         }).catch((e) => done(e));
       })
@@ -41,6 +37,7 @@ describe('POST /todos', () => {
   it('should not create todo with invalid body data', (done) => {
     request(app)
       .post('/todos')
+      .set('x-auth', users[0].tokens[0].token)
       .send({})
       .expect(400)
       .end((err, res) => {
@@ -60,32 +57,39 @@ describe('GET /todos', () => {
   it('should get all todos', (done) => {
     request(app)
       .get('/todos')
+      .set('x-auth', users[0].tokens[0].token)
       .expect(200)
       .expect((res) => {
-        expect(res.body.todos.length).toBe(3);
+        expect(res.body.todos.length).toBe(1);
       })
       .end(done);
   });
 });
 
 describe('GET /todos/:id', () => {
-  // it is an async, so we have to provide a callback function
   it('should return todo doc', (done) => {
     request(app)
-    // is an objectID - we convert it 
       .get(`/todos/${todos[0]._id.toHexString()}`)
+      .set('x-auth', users[0].tokens[0].token)
       .expect(200)
-      // create a custom EXPECT CALL
-      // gets called with the response object
       .expect((res) => {
         expect(res.body.todo.text).toBe(todos[0].text);
       })
       .end(done)
   }); 
 
+  it('should not return todo doc created by another user', (done) => {
+    request(app)
+      .get(`/todos/${todos[1]._id.toHexString()}`)
+      .set('x-auth', users[0].tokens[0].token)
+      .expect(404)
+      .end(done);
+  }); 
+
   it('should return a 404 if Todo is not found', (done) => {
     request(app)
       .get(`/todos/${new ObjectID().toHexString()}`)
+      .set('x-auth', users[0].tokens[0].token)
       .expect(404)
       .end(done)
   });
@@ -94,8 +98,8 @@ describe('GET /todos/:id', () => {
     var id = 123; 
     request(app)
       .get(`/todos/${id}`)
+      .set('x-auth', users[0].tokens[0].token)
       .expect(404)
-      // call the end method and pass done
       .end(done)
   })
 });
@@ -105,47 +109,44 @@ describe('DELETE /todos/:id', () => {
     var hexId = todos[1]._id.toHexString();
 
     request(app)
-    //trigger delete request
       .delete(`/todos/${hexId}`)
-      // assert status
+      .set('x-auth', users[1].tokens[0].token)
       .expect(200)
-      // assert that the response body's ID is indeed the one we sent by adding a callback
-      // function that links itself the response object that supertest got back from it's request
-      // ASSERT THAT THE DATA COMES BACK AS THE RESPONSE BODY
-      // MAKE A CUSTOM EXPECT CALL, PASSING IN OUR FUNCTION,
-      // WHERE WE HAVE OUR RESPONSE OBJECT PASSED IN
-
       .expect((res) => {
         expect(res.body.todo._id).toBe(hexId);
-        // wrap up and query the DB to confirm the ID is not present in the collection
-        // CALL END (METHOD), PASSING IN A CALLBACK, SO WE CAN DO ASYNC THINGS BEFORE WE WRAP UP
-        // THE TEST CASE 
-        // END GETS CALLED WITH AN ERROR AND RESPONSE (IF YOU REMEMBER - NO I DON'T) 
       }).end((err, res) => {
-         // IF THERE IS AN ERROR, WE NEED TO HANDLE THAT, OTHERWISE THERE'S NO NEED TO QUERY THE DB
         if(err) {
-          // PASSING IN THE ERROR TO THE DONE CALLBACK THAT IS GOING TO TELL MOCHA - 
-          // NOW you can determine whether we failed or not
           return done(err);
         }
-
-        // make the query using find by ID. Thing returns a promise, which you can use 
-        // the TODO is actually the success HANDLER
-        // IF THERE IS AN ERROR - > Add a catch clause, passing in the error through TO DONE
-        // passing in a callback -> the todo variable 
         Todo.findById(hexId).then((todo) => {
-          // when you do so, it'll not be there, since you already deleted it
           expect(todo).toNotExist();
-          // call done so we're telling Mocha the case should be evaluated
           done();
-          // use shortcut
         }).catch((e) => done(e));
-      })
+      });
+  });
+
+  it('shouldn\'t remove a todo based on ID, if created by another user', (done) => {
+    var hexId = todos[1]._id.toHexString();
+
+    request(app)
+      .delete(`/todos/${hexId}`)
+      .set('x-auth', users[0].tokens[0].token)
+      .expect(404)
+      .end((err, res) => {
+        if(err) {
+          return done(err);
+        }
+        Todo.findById(hexId).then((todo) => {
+          expect(todo).toExist();
+          done();
+        }).catch((e) => done(e));
+      });
   });
 
   it('should send a 404 if Todo not found', (done) => {
     request(app)
     .delete(`/todos/${new ObjectID().toHexString()}`)
+    .set('x-auth', users[1].tokens[0].token)
     .expect(404)
     .end(done)
   });
@@ -154,8 +155,8 @@ describe('DELETE /todos/:id', () => {
     var id = 123; 
     request(app)
       .delete(`/todos/${id}`)
+      .set('x-auth', users[1].tokens[0].token)
       .expect(404)
-      // call the end method and pass done
       .end(done)
   });
 });
@@ -173,12 +174,28 @@ describe('PATCH /todos/:id', ()=> {
 
     request(app)
       .patch(`/todos/${hexId}`).send(newOptions)
+      .set('x-auth', users[0].tokens[0].token)
       .expect(200)
       .expect((res) => {
         expect(res.body.todo.text).toBe(newOptions.text);
         expect(res.body.todo.completedAt).toBeA('number');
         expect(res.body.todo.completed).toBeA('boolean');
       }).end(done);
+  });
+
+  it('shouldn\'t be able to change a value of a property another user has set or owns', (done) => {
+    var hexId = todos[0]._id.toHexString();
+
+    var newOptions = {
+      completed: true,
+      text: 'Doing some cool shit!',
+    }
+
+    request(app)
+      .patch(`/todos/${hexId}`).send(newOptions)
+      .set('x-auth', users[1].tokens[0].token)
+      .expect(404)
+      .end(done);
   });
 
   it('should clear completedAt when todo is not completed', (done) => {
@@ -191,6 +208,7 @@ describe('PATCH /todos/:id', ()=> {
     
     request(app)
       .patch(`/todos/${hexId}`).send(changedStuff)
+      .set('x-auth', users[1].tokens[0].token)
       .expect(200)
       .expect((res) => {
         expect(res.body.todo.text).toBe(changedStuff.text);
@@ -302,7 +320,7 @@ describe('POST /users/login', () => {
           done(err);
         }
         User.findById(users[1]._id).then((user) => {
-          expect(user.tokens[0]).toInclude({
+          expect(user.tokens[1]).toInclude({
             access: 'auth',
             token: res.headers['x-auth']
           });
@@ -328,7 +346,7 @@ describe('POST /users/login', () => {
         }
 
         User.findById(users[1]._id).then((user) => {
-          expect(user.tokens.length).toBe(0);
+          expect(user.tokens.length).toBe(1);
           done();
         }).catch((e) => done(e));
       })
