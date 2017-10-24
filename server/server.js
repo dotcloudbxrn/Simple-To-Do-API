@@ -8,6 +8,7 @@ const {ObjectID} = require('mongodb');
 const {mongoose} = require('./db/mongoose')
 const {Todo} = require('./models/todo')
 const {User} = require('./models/user')
+var {authenticate} = require('./middleware/authenticate');
 
 var app = express();
 const port = process.env.PORT;
@@ -63,62 +64,37 @@ app.delete('/todos/:id', (req, res) => {
     }
     res.send({todo});
   }).catch((e) => {
-    // catch any potential errors in all of them
     res.status(400).send();
   })
 });
 
 app.patch('/todos/:id', (req, res) => {
   var id = req.params.id;
-  // where updates are going to be stored. - if you wanna set the todo's text to something else 
-  // I would make a patch request, set the text property = whatever the todo text to be
-  // problem is, you can send ANY property along - as in add random stuff 
-  // or they can send properties we don't want them to update 
-  // completedAt for example
-
-
-  // for that, we use the pick method - it takes an object, then an array of properties
-  // you wanna pick off if they exist -> for example -> if the text prop exists, pick it off the req body, 
-  // adding it to body, this is something the should be able to update 
   var body = _.pick(req.body, ['text', 'completed']);
   
   if(!ObjectID.isValid(id)) {
     return res.status(404).send();
   }
 
-  // checking the completed value and using that value to set completedAt.
-  // if this is a boolean and is true 
   if(_.isBoolean(body.completed) && body.completed) {
-    // returns a javascript timestamp -> amount of seconds since jan 1 1970 -> called unix epic?
     body.completedAt = new Date().getTime();
   } else {
     body.completed = false;
     body.completedAt = null;
   }
 
-  //takes three arguments, id, 
-  //then MONGODB OPERATORS
   Todo.findByIdAndUpdate(id,
      {
-       // set the values on our OBJECT
-       // set takes a set of key-value pairs and these are going to be set.
-       // we already have generated this object, and it happens to be called body - look above
        $set: body
      },
-     // now it's time for OPTIONS
     {
-      // similar to returnOriginal : false. Look up the mongodb-update
       new: true
     })
-    //now we can tack on the then callback and the catch callback for success / error code
     .then(
-      // if things go well -> we'll get our todo doc back, if not -> we'll get an error argument, 
       (todo) => {
-        // check if todo object exists
         if (!todo) {
           return res.status(404).send();
         }
-        // we were able to find the object and it was updated
         res.send({todo});
       }
     ).catch((e) => {
@@ -126,35 +102,20 @@ app.patch('/todos/:id', (req, res) => {
     });
 });
 
-// Post /users
-//  // create a new instance of the model
-// call save, if it's good -> proceed, if not, shit
-// use pick -> tokens
-// email and password
-// then pass that into the constructor fn
-// call save and respond appropriately
-// email unique -> shut down server, wipe database put it on again
-
-
 app.post(`/users`, (req, res) => {
   var reqBody = _.pick(req.body, ['email', 'password']);
   var user = new User(reqBody);
 
   user.save().then(() => {
-    return user.generateAuthToken();
+    var shitToken = user.generateAuthToken();
+    return shitToken;
+
   }).then((token) => {
     res.header('x-auth', token).send(user);
   }).catch((e) => {
     console.log(e);
     res.status(400).send(e);
   })
-
-  // versus the error case (not using catch), instead of catch, WHICH DOES NOT WORK
-  // as it does not find duplicates. interesting
-  // , (err) => {
-  //   console.log(err);
-  //   res.status(400).send(err);
-  // }
 })
 
 app.get('/users', (req, res) => {
@@ -165,8 +126,12 @@ app.get('/users', (req, res) => {
   })
 })
 
+app.get('/users/me', authenticate ,(req, res) => {
+  res.send(req.user);
+});
+
 app.listen(port, () => {
   console.log(`Started on port ${port}`);
 });
 
-module.exports = {app};
+module.exports = {app}; 
